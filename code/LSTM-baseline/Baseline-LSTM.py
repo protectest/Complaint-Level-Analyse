@@ -35,11 +35,12 @@ class Sequence_Dataset(Dataset):
 
 def collote_fn(batch_samples):
     batch_sentence = []
-    batch_label = torch.zeros(4, 5).long()
+    # batch_label = torch.zeros(len(batch_samples), 5).long()
+    batch_label = []
     for id, sample in enumerate(batch_samples):
         batch_sentence.append(sample[1])
-        # batch_label.append(int(sample[0]))
-        batch_label[id][int(sample[0])] = 1
+        batch_label.append(int(float(sample[0])))
+        # batch_label[id][int(sample[0])] = 1
     x = [tokenizer.encode(
         sentence,
         padding="max_length",
@@ -47,15 +48,10 @@ def collote_fn(batch_samples):
         return_tensors="pt"
     ) for sentence in batch_sentence]
     x = torch.tensor([t.numpy() for t in x])
-    y = batch_label
+    y = torch.tensor(batch_label)
     return x, y
 
-train_data = Sequence_Dataset("..\complaint_severity_data.csv")
-train_dataloader = DataLoader(train_data, batch_size=4, shuffle=True, collate_fn=collote_fn, drop_last=True)
-# print(next(enumerate(train_dataloader)))
 
-device = 'cuda' if torch.cuda.is_available() else 'cpu'
-print(f'Using {device} device')
 
 class LSTM(nn.Module):
     def __init__(self, input_size, hidden_size, num_layers, output_size, batch_size, bidirectional=False):
@@ -118,7 +114,8 @@ def train_step(model, features, labels):
     # print(labels)
     # y_true = [i for item in labels for i in item]
     # print(y_true)
-    y_true = [np.argmax(i.detach().numpy()) for i in labels]
+    # y_true = [np.argmax(i.detach().numpy()) for i in labels]
+    y_true = labels
     # print(y_pred)
     # print(y_true)
     # exit()
@@ -126,9 +123,13 @@ def train_step(model, features, labels):
     count = sum([1 for x, y in zip(y_pred, y_true) if x == y])
 
     # labels = labels.reshape(1,4,1)
-    labels = labels.reshape(1,4,5)
-    loss = loss_function(predictions, labels.float())
-    # loss = loss_function(predictions, labels.to(torch.int64))
+    # labels = labels.reshape(1,4,5)
+    # labels = labels.reshape(1,len(features),5)
+    # labels = labels.reshape(1,5).squeeze()
+    # loss = loss_function(predictions, labels.float())
+    loss = loss_function(predictions.squeeze(), labels.to(torch.int64))
+
+
     # 反向传播求梯度
     loss.backward()
     # 参数更新
@@ -181,11 +182,59 @@ def test_model(model, dataloader):
     return y_pred
 
 
+# path = "..\complaint_severity_data.csv"
+path = "..\complain_data.csv"
+train_data = Sequence_Dataset(path)
 
-model = LSTM(512, 64, 5, 5, 4, bidirectional=False).to(device)
-loss_function = nn.MSELoss()
+
+# from torch.utils.data import DataLoader, WeightedRandomSampler
+# weights = torch.Tensor([1,5,6,10,10])
+# sampler = WeightedRandomSampler(weights, num_samples=len(train_data), replacement=True)
+# dataloader = DataLoader(train_data, batch_size=32, sampler=sampler)
+
+
+dataloader = DataLoader(train_data, batch_size=32)
+train_dataloader = DataLoader(train_data, batch_size=4, shuffle=True, collate_fn=collote_fn, drop_last=True)
+# print(next(enumerate(train_dataloader)))
+# exit()
+
+device = 'cuda' if torch.cuda.is_available() else 'cpu'
+print(f'Using {device} device')
+
+
+model = LSTM(512, 1024, 5, 5, 4, bidirectional=False).to(device)
+# loss_function = nn.CrossEntropyLoss(weight=torch.Tensor([1, 5, 6, 10, 10]))
+# [0.05, 0.25, 0.3, 0.45, 0.45]
+
+loss_function = nn.CrossEntropyLoss(weight=torch.FloatTensor([1,1,1,1,1]).to(device))
+
+# loss_function = nn.MSELoss()
+#4:200
+#3:220
+#2:380
+#1:430
+#0:2200
+
+# a = torch.tensor([[-0.1805, -0.0893, 0.1623, 0.0313, 0.0804]])
+# b = torch.tensor([1])
+# loss_function = nn.CrossEntropyLoss(weight=torch.FloatTensor([0.05, 0.25, 0.3, 0.45, 0.45]).to(device))
+# print(loss_function(a, b))
+# exit()
+
+# from torch import autograd
+# loss = nn.CrossEntropyLoss()
+# input = autograd.Variable(torch.randn(3, 5), requires_grad=True)
+# print(input)
+# print(input.shape)
+# target = autograd.Variable(torch.LongTensor(3).random_(5))
+# print(target)
+# output = loss(input, target)
+# output.backward()
+# exit()
+
+
 optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
-loss,accurency = train_model(model, 500, train_dataloader)
+loss,accurency = train_model(model, 150, train_dataloader)
 
 
 #%%
@@ -200,7 +249,7 @@ y_pred = [np.argmax(i.detach().numpy()) for i in y_pred]
 # print(y_pred[0])
 # print(len(y_pred))
 
-df = pd.read_csv("..\complaint_severity_data.csv", header=None, names=['id', 'text', 'lable', 'multilabel', 'domain'])
+df = pd.read_csv(path, header=None, names=['id', 'text', 'lable', 'multilabel', 'domain'])
 y_true = df['multilabel']
 
 
