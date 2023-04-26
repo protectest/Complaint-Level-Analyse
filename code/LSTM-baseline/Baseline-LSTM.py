@@ -1,3 +1,4 @@
+import os
 import pandas as pd
 import numpy as np
 import torch
@@ -10,7 +11,10 @@ from tqdm.auto import tqdm
 from plotly import graph_objects as go
 from plotly.subplots import make_subplots
 
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
+device = 'cuda' if torch.cuda.is_available() else 'cpu'
+print(f'Using {device} device')
 
 tokenizer = RobertaTokenizer.from_pretrained('roberta-base')
 
@@ -59,6 +63,7 @@ class LSTM(nn.Module):
         self.input_size = input_size
         self.hidden_size = hidden_size
         self.num_layers = num_layers
+        self.num_layers=self.num_layers
         self.num_directions = 2 if bidirectional else 1
         self.batch_size = batch_size
         self.output_size = output_size
@@ -86,7 +91,7 @@ class LSTM(nn.Module):
         # exit()
 
 
-        output, _ = self.lstm(input_seq.float(),(h_0,c_0))
+        output, _ = self.lstm(input_seq.float().to(device),(h_0,c_0))
         preds = []
         pred= self.fc(output)
         pred= pred[:, -1, :]
@@ -110,7 +115,7 @@ def train_step(model, features, labels):
     # print(labels)
     # print(labels.shape)
     y_pred = [i for item in predictions for i in item]
-    y_pred = [np.argmax(i.detach().numpy()) for i in y_pred]
+    y_pred = [torch.max(i , 0)[1] for i in y_pred]
     # print(labels)
     # y_true = [i for item in labels for i in item]
     # print(y_true)
@@ -127,7 +132,7 @@ def train_step(model, features, labels):
     # labels = labels.reshape(1,len(features),5)
     # labels = labels.reshape(1,5).squeeze()
     # loss = loss_function(predictions, labels.float())
-    loss = loss_function(predictions.squeeze(), labels.to(torch.int64))
+    loss = loss_function(predictions.squeeze(), labels.to(torch.int64).to(device))
 
 
     # 反向传播求梯度
@@ -198,8 +203,7 @@ train_dataloader = DataLoader(train_data, batch_size=4, shuffle=True, collate_fn
 # print(next(enumerate(train_dataloader)))
 # exit()
 
-device = 'cuda' if torch.cuda.is_available() else 'cpu'
-print(f'Using {device} device')
+
 
 
 model = LSTM(512, 1024, 5, 5, 4, bidirectional=False).to(device)
@@ -234,7 +238,7 @@ loss_function = nn.CrossEntropyLoss(weight=torch.FloatTensor([1,1,1,1,1]).to(dev
 
 
 optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
-loss,accurency = train_model(model, 150, train_dataloader)
+loss,accurency = train_model(model, 50, train_dataloader)
 
 
 #%%
@@ -244,7 +248,7 @@ y_pred = [i for items in y_pred for item in items for i in item]
 # print( [i.detach().numpy() for i in y_pred])
 # print(y_pred[0])
 # print(len(y_pred))
-y_pred = [np.argmax(i.detach().numpy()) for i in y_pred]
+y_pred = [torch.max(i , 0)[1] for i in y_pred]
 # print("//////////////////////////////////////////////////////////")
 # print(y_pred[0])
 # print(len(y_pred))
@@ -257,16 +261,12 @@ trace_accurency = go.Scatter(y=accurency, name="accurency")
 trace_loss = go.Scatter(y=loss, name="loss")
 fig1 = go.Figure(data=[trace_accurency, trace_loss], layout=go.Layout(title='第一张图', xaxis=dict(title='X轴'), yaxis=dict(title='Y轴')))
 
-trace_true = go.Scatter(y=y_true, name='y_true')
-ftrace_pred = go.Scatter(y=y_pred, name='y_pred')
-fig2 = go.Figure(data=[trace_true, ftrace_pred], layout=go.Layout(title='第一张图', xaxis=dict(title='X轴'), yaxis=dict(title='Y轴')))
 
 
 fig = make_subplots(rows=1, cols=2, subplot_titles=('第一张图', '第二张图'))
 fig.add_trace(fig1.data[0], row=1, col=1)
 fig.add_trace(fig1.data[1], row=1, col=1)
-fig.add_trace(fig2.data[0], row=1, col=2)
-fig.add_trace(fig2.data[1], row=1, col=2)
+
 
 fig.show()
 #

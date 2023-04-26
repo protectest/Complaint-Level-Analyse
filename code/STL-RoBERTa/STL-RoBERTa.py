@@ -69,16 +69,16 @@ class RobertaPreTrainedModel_tuning(RobertaPreTrainedModel):
 
 def train_step(model, features, labels):
     # 正向传播求损失
-    predictions = model.forward(features.to(torch.int64))
+    predictions = model.forward(features.to(torch.int64).to(device))
     # predictions = model.forward(features.float())
     # print(labels)
     # print(labels.shape)
     y_pred = [i for item in predictions for i in item]
-    y_pred = [np.argmax(i.detach().numpy()) for i in y_pred]
+    y_pred = [torch.max(i , 0)[1] for i in y_pred]
     # print(labels)
     # y_true = [i for item in labels for i in item]
     # print(y_true)
-    y_true = [np.argmax(i.detach().numpy()) for i in labels]
+    y_true = [torch.max(i , 0)[1] for i in labels]
     # print(y_pred)
     # print(y_true)
     # exit()
@@ -123,7 +123,7 @@ def train_model(model, epochs, dataloader):
         list_loss = []
         correct = []
         for step,(batch_x,batch_y) in enumerate(dataloader):
-            lossi,correct_batch = train_step(model,batch_x, batch_y)
+            lossi,correct_batch = train_step(model,batch_x.to(device), batch_y.to(device))
             list_loss.append(lossi)
             correct.append(correct_batch)
             progress_bar.update(1)
@@ -143,7 +143,7 @@ def train_model(model, epochs, dataloader):
 def test_model(model, dataloader):
     y_pred = []
     for step,(batch_x,batch_y) in enumerate(dataloader):
-        y_pred.append(model.forward(batch_x.float()))
+        y_pred.append(model.forward(batch_x.to(torch.int64).to(device)))
     return y_pred
 
 path = "..\complain_data.csv"
@@ -151,7 +151,7 @@ checkpoint = "roberta-base"
 tokenizer = RobertaTokenizer.from_pretrained(checkpoint)
 train_data = Sequence_Dataset(path)
 
-dataloader = DataLoader(train_data, batch_size=32)
+# dataloader = DataLoader(train_data, batch_size=32)
 train_dataloader = DataLoader(train_data, batch_size=4, shuffle=True, collate_fn=collote_fn, drop_last=True)
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -193,17 +193,17 @@ loss_function = nn.MSELoss()
 #
 #
 optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
-loss,accurency = train_model(model, 50, train_dataloader)
+loss,accurency = train_model(model, 1, train_dataloader)
 #
 #
 # #%%
 # # 预测验证预览
-y_pred = test_model(model, train_dataloader)
-y_pred = [i for items in y_pred for item in items for i in item]
+# y_pred = test_model(model, train_dataloader)
+# y_pred = [i for items in y_pred for item in items for i in item]
 # print( [i.detach().numpy() for i in y_pred])
 # print(y_pred[0])
 # print(len(y_pred))
-y_pred = [np.argmax(i.detach().numpy()) for i in y_pred]
+# y_pred = [torch.max(i , 0)[1] for i in y_pred]
 # print("//////////////////////////////////////////////////////////")
 # print(y_pred[0])
 # print(len(y_pred))
@@ -216,15 +216,15 @@ trace_accurency = go.Scatter(y=accurency, name="accurency")
 trace_loss = go.Scatter(y=loss, name="loss")
 fig1 = go.Figure(data=[trace_accurency, trace_loss], layout=go.Layout(title='第一张图', xaxis=dict(title='X轴'), yaxis=dict(title='Y轴')))
 
-trace_true = go.Scatter(y=y_true, name='y_true')
-ftrace_pred = go.Scatter(y=y_pred, name='y_pred')
-fig2 = go.Figure(data=[trace_true, ftrace_pred], layout=go.Layout(title='第一张图', xaxis=dict(title='X轴'), yaxis=dict(title='Y轴')))
+# trace_true = go.Scatter(y=y_true, name='y_true')
+# ftrace_pred = go.Scatter(y=y_pred, name='y_pred')
+# fig2 = go.Figure(data=[trace_true, ftrace_pred], layout=go.Layout(title='第一张图', xaxis=dict(title='X轴'), yaxis=dict(title='Y轴')))
 
 
 fig = make_subplots(rows=1, cols=2, subplot_titles=('第一张图', '第二张图'))
 fig.add_trace(fig1.data[0], row=1, col=1)
 fig.add_trace(fig1.data[1], row=1, col=1)
-fig.add_trace(fig2.data[0], row=1, col=2)
-fig.add_trace(fig2.data[1], row=1, col=2)
+# fig.add_trace(fig2.data[0], row=1, col=2)
+#f ig.add_trace(fig2.data[1], row=1, col=2)
 
 fig.show()
