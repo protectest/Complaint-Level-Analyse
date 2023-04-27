@@ -1,10 +1,10 @@
+import os
 import pandas as pd
 import numpy as np
 import torch
 from torch import nn
 from torch.utils.data import Dataset
 from torch.utils.data import DataLoader
-from torch.nn import functional as F
 from transformers import RobertaTokenizer, RobertaForSequenceClassification, RobertaModel,RobertaPreTrainedModel
 from transformers import RobertaConfig
 from tqdm.auto import tqdm
@@ -13,6 +13,7 @@ from plotly.subplots import make_subplots
 
 
 
+# load data
 class Sequence_Dataset(Dataset):
     def __init__(self, annotations_file, transform=None, target_transform=None):
         self.data = self.load_data(annotations_file)
@@ -32,13 +33,15 @@ class Sequence_Dataset(Dataset):
         return self.data[idx]
 
 
+#*****************************
+#////data process function////
+#*****************************
+#data tokenization
 def collote_fn(batch_samples):
     batch_sentence = []
     batch_label = torch.zeros(len(batch_samples), 5).long()
-    # batch_label = []
     for id, sample in enumerate(batch_samples):
         batch_sentence.append(sample[1])
-        # batch_label.append(int(sample[0]))
         batch_label[id][int(sample[0])] = 1
     x = tokenizer(
         batch_sentence,
@@ -51,6 +54,9 @@ def collote_fn(batch_samples):
 
 
 
+#******************************************
+#////build bidirectional RoBERTa module////
+#******************************************
 class RobertaPreTrainedModel_tuning(RobertaPreTrainedModel):
     def __init__(self, config):
         super().__init__(config)
@@ -68,49 +74,34 @@ class RobertaPreTrainedModel_tuning(RobertaPreTrainedModel):
 
 
 def train_step(model, features, labels):
-    # 正向传播求损失
+    # Forward propagation for loss
     predictions = model.forward(features.to(torch.int64).to(device))
-    # predictions = model.forward(features.float())
-    # print(labels)
-    # print(labels.shape)
     y_pred = [i for item in predictions for i in item]
     y_pred = [torch.max(i , 0)[1] for i in y_pred]
-    # print(labels)
-    # y_true = [i for item in labels for i in item]
-    # print(y_true)
     y_true = [torch.max(i , 0)[1] for i in labels]
-    # print(y_pred)
-    # print(y_true)
-    # exit()
-
+    # Calculate the correct number of predicted samples
     count = sum([1 for x, y in zip(y_pred, y_true) if x == y])
-
-    # labels = labels.reshape(1,4,1)
-    # labels = labels.reshape(1,4,5)
-    # labels = labels.reshape(1,len(features),5)
-    # labels = labels.reshape(1,5).squeeze()
-    # loss = loss_function(predictions, labels.float())
-    # print(predictions)
-    # print(labels)
-
+    # Computed loss function
     loss = loss_function(predictions.squeeze(), labels.float())
 
 
-    # 反向传播求梯度
+    # Inverse propagation to find the gradient
     loss.backward()
-    # 参数更新
+    # Parameter updating
     optimizer.step()
     optimizer.zero_grad()
     return loss.item(),count
 
 
-# 测试一个batch
+#********************
+#////test a batch////
+#********************
 # features, labels = next(iter(train_dataloader))
 # loss = train_step(model, features.float(), labels.float())
 # print(loss)
 
-#%%
-# 训练模型
+
+# train model
 def train_model(model, epochs, dataloader):
     model.train()
     progress_bar = tqdm(range(len(dataloader)*epochs))
@@ -128,103 +119,112 @@ def train_model(model, epochs, dataloader):
             correct.append(correct_batch)
             progress_bar.update(1)
             progress_bar.set_description(f'loss: {lossi:>7f}')
+        # Calculate the loss function for each round
         loss = np.mean(list_loss)
-        accurency = sum(correct)/(4*len(correct))
+        # Accuracy of calculation
+        accurency = sum(correct)/(dataloader.batch_size * len(correct))
 
         loss_total.append(loss)
         accurency_total.append(accurency)
 
+        # Output the loss function every ten rounds
         if epoch % 10 == 0 and epoch != 0:
             print('epoch={} | loss={} '.format(epoch,loss))
 
     return loss_total, accurency_total
 
-# 测试模型
-def test_model(model, dataloader):
-    y_pred = []
-    for step,(batch_x,batch_y) in enumerate(dataloader):
-        y_pred.append(model.forward(batch_x.to(torch.int64).to(device)))
-    return y_pred
+# test model
+def test_model(model, dataloader,epochs):
+    accurency_total = []
+    y_show_pred = []
+    y_show_true = []
+    for epoch  in range(1, epochs+1):
+        correct = []
+        for step,(batch_x,batch_y) in enumerate(dataloader):
+            predictions = model.forward(batch_x.to(torch.int64).to(device))
+            y_pred = [i for item in predictions for i in item]
+            y_pred = [torch.max(i , 0)[1] for i in y_pred]
+            y_true = [torch.max(i , 0)[1] for i in batch_y]
+            if(epoch == epochs):
+                y_show_true.append(y_true)
+                y_show_pred.append(y_pred)
 
-path = "..\complain_data.csv"
-checkpoint = "roberta-base"
-tokenizer = RobertaTokenizer.from_pretrained(checkpoint)
-train_data = Sequence_Dataset(path)
+            count = sum([1 for x, y in zip(y_pred,y_true) if x == y])
+            correct.append(count)
+        accurency = sum(correct) / (dataloader.batch_size * len(correct))
+        accurency_total.append(accurency)
 
-# dataloader = DataLoader(train_data, batch_size=32)
-train_dataloader = DataLoader(train_data, batch_size=4, shuffle=True, collate_fn=collote_fn, drop_last=True)
+    return accurency_total,y_show_true,y_show_pred
 
+
+
+# Using GPU acceleration
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 print(f'Using {device} device')
 
+# Data set path
+path = "..//complain_data.csv"
+
+# model choose
+checkpoint = "roberta-base"
+
+# Use RoERTa tokenization
+tokenizer = RobertaTokenizer.from_pretrained(checkpoint)
+
+# Load data
+data = Sequence_Dataset(path)
+
+# Split training and test data sets
+train_dataset, test_dataset = torch.utils.data.random_split(data, [1239, 300])
+train_dataloader = DataLoader(train_dataset, batch_size=4, shuffle=True, collate_fn=collote_fn, drop_last=True)
+test_dataloader = DataLoader(test_dataset, batch_size=4, shuffle=True, collate_fn=collote_fn, drop_last=True)
+
+# Initialization model
 config = RobertaConfig.from_pretrained(checkpoint)
 model = RobertaPreTrainedModel_tuning.from_pretrained(checkpoint, config=config).to(device)
 
 step,(batch_x,batch_y) = next(enumerate(train_dataloader))
 
-# # loss_function = nn.CrossEntropyLoss(weight=torch.Tensor([1, 5, 6, 10, 10]))
-# # [0.05, 0.25, 0.3, 0.45, 0.45]
-#
-# loss_function = nn.CrossEntropyLoss(weight=torch.FloatTensor([1,1,1,1,1]).to(device))
-#
+# Use MSELoss
 loss_function = nn.MSELoss()
-# #4:200
-# #3:220
-# #2:380
-# #1:430
-# #0:2200
-#
-# # a = torch.tensor([[-0.1805, -0.0893, 0.1623, 0.0313, 0.0804]])
-# # b = torch.tensor([1])
-# # loss_function = nn.CrossEntropyLoss(weight=torch.FloatTensor([0.05, 0.25, 0.3, 0.45, 0.45]).to(device))
-# # print(loss_function(a, b))
-# # exit()
-#
-# # from torch import autograd
-# # loss = nn.CrossEntropyLoss()
-# # input = autograd.Variable(torch.randn(3, 5), requires_grad=True)
-# # print(input)
-# # print(input.shape)
-# # target = autograd.Variable(torch.LongTensor(3).random_(5))
-# # print(target)
-# # output = loss(input, target)
-# # output.backward()
-# # exit()
-#
-#
+
+# Adam optimization function is used to define the learning rate
 optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
-loss,accurency = train_model(model, 1, train_dataloader)
-#
-#
-# #%%
-# # 预测验证预览
-# y_pred = test_model(model, train_dataloader)
-# y_pred = [i for items in y_pred for item in items for i in item]
-# print( [i.detach().numpy() for i in y_pred])
-# print(y_pred[0])
-# print(len(y_pred))
-# y_pred = [torch.max(i , 0)[1] for i in y_pred]
-# print("//////////////////////////////////////////////////////////")
-# print(y_pred[0])
-# print(len(y_pred))
 
-df = pd.read_csv(path, header=None, names=['id', 'text', 'lable', 'multilabel', 'domain'])
-y_true = df['multilabel']
+train_epochs = 50
+test_epochs = 10
+
+# train model
+loss,accurency = train_model(model, train_epochs, train_dataloader)
+
+# Prediction verification preview
+test_accurency,y_true,y_pred = test_model(model, train_dataloader,test_epochs)
+y_pred = sorted([i for item in y_pred for i in item])
+y_pred = list(map(int,y_pred))
+y_true = sorted([i for item in y_true for i in item])
+y_true = list(map(int,y_true))
 
 
-trace_accurency = go.Scatter(y=accurency, name="accurency")
+# visualization
+train_accurency = go.Scatter(y=accurency, name="accurency")
 trace_loss = go.Scatter(y=loss, name="loss")
-fig1 = go.Figure(data=[trace_accurency, trace_loss], layout=go.Layout(title='第一张图', xaxis=dict(title='X轴'), yaxis=dict(title='Y轴')))
+fig1 = go.Figure(data=[train_accurency, trace_loss], layout=go.Layout(title='loss/accurency-epoch', xaxis=dict(title='X轴'), yaxis=dict(title='Y轴')))
 
-# trace_true = go.Scatter(y=y_true, name='y_true')
-# ftrace_pred = go.Scatter(y=y_pred, name='y_pred')
-# fig2 = go.Figure(data=[trace_true, ftrace_pred], layout=go.Layout(title='第一张图', xaxis=dict(title='X轴'), yaxis=dict(title='Y轴')))
+test_accurency = go.Scatter(y=test_accurency, name='test accurency')
+fig2 = go.Figure(data=[test_accurency], layout=go.Layout(title='test accurency', xaxis=dict(title='X轴'), yaxis=dict(title='Y轴')))
 
+trace_true = go.Scatter(y=y_true, name='y_true')
+fig3 = go.Figure(data=[trace_true], layout=go.Layout(title='y_true', xaxis=dict(title='X轴'), yaxis=dict(title='Y轴')))
 
-fig = make_subplots(rows=1, cols=2, subplot_titles=('第一张图', '第二张图'))
+ftrace_pred = go.Scatter(y=y_pred, name='y_pred')
+fig4 = go.Figure(data=[ftrace_pred], layout=go.Layout(title='y_pred', xaxis=dict(title='X轴'), yaxis=dict(title='Y轴')))
+
+fig = make_subplots(rows=2, cols=2, subplot_titles=('loss/accurency~epoch', 'test accurency~epoch', 'y_true', 'y_pred'))
 fig.add_trace(fig1.data[0], row=1, col=1)
 fig.add_trace(fig1.data[1], row=1, col=1)
-# fig.add_trace(fig2.data[0], row=1, col=2)
-#f ig.add_trace(fig2.data[1], row=1, col=2)
+fig.add_trace(fig2.data[0], row=1, col=2)
+fig.add_trace(fig3.data[0], row=2, col=1)
+fig.add_trace(fig4.data[0], row=2, col=2)
 
-fig.show()
+fig.write_image("image.png",format='png')
