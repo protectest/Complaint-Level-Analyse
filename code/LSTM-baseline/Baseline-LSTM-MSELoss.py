@@ -38,10 +38,10 @@ class Sequence_Dataset(Dataset):
 #data tokenization
 def collote_fn(batch_samples):
     batch_sentence = []
-    batch_label = []
+    batch_label = torch.zeros(4, 5).long()
     for id, sample in enumerate(batch_samples):
         batch_sentence.append(sample[1])
-        batch_label.append(int(float(sample[0])))
+        batch_label[id][int(sample[0])] = 1
     x = [tokenizer.encode(
         sentence,
         padding="max_length",
@@ -49,7 +49,7 @@ def collote_fn(batch_samples):
         return_tensors="pt"
     ) for sentence in batch_sentence]
     x = torch.tensor([t.numpy() for t in x])
-    y = torch.tensor(batch_label)
+    y = batch_label
     return x, y
 
 
@@ -90,11 +90,11 @@ def train_step(model, features, labels):
     predictions = model.forward(features.to(torch.int64))
     y_pred = [i for item in predictions for i in item]
     y_pred = [torch.max(i , 0)[1] for i in y_pred]
-    y_true = labels
+    y_true = [torch.max(i , 0)[1] for i in labels]
     # Calculate the correct number of predicted samples
     count = sum([1 for x, y in zip(y_pred, y_true) if x == y])
     # Computed loss function
-    loss = loss_function(predictions.squeeze(), labels.to(torch.int64).to(device))
+    loss = loss_function(predictions.squeeze(), labels.float().to(device))
 
     # Inverse propagation to find the gradient
     loss.backward()
@@ -156,7 +156,7 @@ def test_model(model, dataloader,epochs):
             predictions = model.forward(batch_x.float())
             y_pred = [i for item in predictions for i in item]
             y_pred = [torch.max(i , 0)[1] for i in y_pred]
-            y_true = batch_y
+            y_true = [torch.max(i, 0)[1] for i in batch_y]
             if(epoch == epochs):
                 y_show_true.append(y_true)
                 y_show_pred.append(y_pred)
@@ -189,16 +189,16 @@ train_dataloader = DataLoader(train_dataset, batch_size=4, shuffle=True, collate
 test_dataloader = DataLoader(test_dataset, batch_size=4, shuffle=True, collate_fn=collote_fn, drop_last=True)
 
 # Initialization model
-model = LSTM(512, 1024, 5, 5, 4, bidirectional=False).to(device)
+model = LSTM(512, 64, 5, 5, 4, bidirectional=False).to(device)
 
 # Use the cross entropy loss function
-loss_function = nn.CrossEntropyLoss(weight=torch.FloatTensor([1,1,1,1,1]).to(device))
+loss_function = nn.MSELoss()
 
 # Adam optimization function is used to define the learning rate
 optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
 
-train_epochs = 50
-test_epochs = 10
+train_epochs = 5
+test_epochs = 1
 
 # train model
 loss,accurency = train_model(model, train_epochs, train_dataloader)
