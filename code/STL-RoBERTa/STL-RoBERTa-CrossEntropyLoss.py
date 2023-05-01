@@ -65,6 +65,10 @@ class RobertaPreTrainedModel_tuning(RobertaPreTrainedModel):
         self.classifier = nn.Linear(768, 5)
         self.post_init()
 
+        # fix param or not
+        for param in self.classifier.parameters():
+            param.requires_grad = True
+
     def forward(self, x):
         bert_output = self.bert(**x)
         cls_vectors = bert_output.last_hidden_state[:, 0, :]
@@ -76,9 +80,9 @@ class RobertaPreTrainedModel_tuning(RobertaPreTrainedModel):
 def train_step(model, features, labels):
     # Forward propagation for loss
     predictions = model.forward(features.to(torch.int64).to(device))
-    y_pred = [i for item in predictions for i in item]
-    y_pred = [torch.max(i , 0)[1] for i in y_pred]
+    y_pred = [torch.max(i , 0)[1] for i in predictions]
     y_true = labels
+
     # Calculate the correct number of predicted samples
     count = sum([1 for x, y in zip(y_pred, y_true) if x == y])
     # Computed loss function
@@ -142,8 +146,7 @@ def test_model(model, dataloader,epochs):
         correct = []
         for step,(batch_x,batch_y) in enumerate(dataloader):
             predictions = model.forward(batch_x.to(torch.int64).to(device))
-            y_pred = [i for item in predictions for i in item]
-            y_pred = [torch.max(i , 0)[1] for i in y_pred]
+            y_pred = [torch.max(i , 0)[1] for i in predictions]
             y_true = batch_y
             if(epoch == epochs):
                 y_show_true.append(y_true)
