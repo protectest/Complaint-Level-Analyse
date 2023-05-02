@@ -261,19 +261,19 @@ y_true2 = sorted([i for item in y_true2 for i in item])
 y_true2 = list(map(int,y_true2))
 
 # visualization
-train_accurency1 = go.Scatter(y=accurency1, name="accurency_intensity")
+train_accurency1 = go.Scatter(y=accurency1, name="accuracy_intensity")
 trace_loss1 = go.Scatter(y=loss, name="loss")
-fig1 = go.Figure(data=[train_accurency1, trace_loss1], layout=go.Layout(title='loss/accurency-epoch', xaxis=dict(title='X轴'), yaxis=dict(title='Y轴')))
+fig1 = go.Figure(data=[train_accurency1, trace_loss1], layout=go.Layout(title='loss/accuracy-epoch', xaxis=dict(title='X轴'), yaxis=dict(title='Y轴')))
 
-train_accurency2 = go.Scatter(y=accurency2, name="accurency_exp")
+train_accurency2 = go.Scatter(y=accurency2, name="accuracy_exp")
 trace_loss2 = go.Scatter(y=loss, name="loss")
-fig2 = go.Figure(data=[train_accurency2, trace_loss2], layout=go.Layout(title='loss/accurency-epoch', xaxis=dict(title='X轴'), yaxis=dict(title='Y轴')))
+fig2 = go.Figure(data=[train_accurency2, trace_loss2], layout=go.Layout(title='loss/accuracy-epoch', xaxis=dict(title='X轴'), yaxis=dict(title='Y轴')))
 
-test_accurency1 = go.Scatter(y=test_accurency1, name='test accurency_intensity')
-fig3 = go.Figure(data=[test_accurency1], layout=go.Layout(title='test accurency', xaxis=dict(title='X轴'), yaxis=dict(title='Y轴')))
+test_accurency1 = go.Scatter(y=test_accurency1, name='test accuracy_intensity')
+fig3 = go.Figure(data=[test_accurency1], layout=go.Layout(title='test accuracy', xaxis=dict(title='X轴'), yaxis=dict(title='Y轴')))
 
-test_accurency2 = go.Scatter(y=test_accurency2, name='test accurency_exp')
-fig4 = go.Figure(data=[test_accurency2], layout=go.Layout(title='test accurency', xaxis=dict(title='X轴'), yaxis=dict(title='Y轴')))
+test_accurency2 = go.Scatter(y=test_accurency2, name='test accuracy_exp')
+fig4 = go.Figure(data=[test_accurency2], layout=go.Layout(title='test accuracy', xaxis=dict(title='X轴'), yaxis=dict(title='Y轴')))
 
 trace_true1 = go.Scatter(y=y_true1, name='y_true')
 fig5 = go.Figure(data=[trace_true1], layout=go.Layout(title='y_true', xaxis=dict(title='X轴'), yaxis=dict(title='Y轴')))
@@ -287,7 +287,7 @@ fig7 = go.Figure(data=[trace_true2], layout=go.Layout(title='y_true', xaxis=dict
 ftrace_pred2 = go.Scatter(y=y_pred2, name='y_pred')
 fig8 = go.Figure(data=[ftrace_pred2], layout=go.Layout(title='y_pred', xaxis=dict(title='X轴'), yaxis=dict(title='Y轴')))
 
-fig = make_subplots(rows=2, cols=2, subplot_titles=('loss/accurency~epoch', 'test accurency~epoch', 'y_true', 'y_pred'))
+fig = make_subplots(rows=2, cols=2, subplot_titles=('loss/accuracy~epoch', 'test accuracy~epoch', 'y_true', 'y_pred'))
 fig.add_trace(fig1.data[0], row=1, col=1)
 fig.add_trace(fig1.data[1], row=1, col=1)
 fig.add_trace(fig3.data[0], row=1, col=2)
@@ -296,7 +296,7 @@ fig.add_trace(fig6.data[0], row=2, col=2)
 
 fig.write_image("image_intensity.png",format='png')
 
-fig = make_subplots(rows=2, cols=2, subplot_titles=('loss/accurency~epoch', 'test accurency~epoch', 'y_true', 'y_pred'))
+fig = make_subplots(rows=2, cols=2, subplot_titles=('loss/accuracy~epoch', 'test accuracy~epoch', 'y_true', 'y_pred'))
 fig.add_trace(fig2.data[0], row=1, col=1)
 fig.add_trace(fig2.data[1], row=1, col=1)
 fig.add_trace(fig4.data[0], row=1, col=2)

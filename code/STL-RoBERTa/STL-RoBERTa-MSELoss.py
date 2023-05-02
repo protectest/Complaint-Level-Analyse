@@ -201,7 +201,7 @@ test_epochs = 10
 loss,accurency = train_model(model, train_epochs, train_dataloader)
 
 # Prediction verification preview
-test_accurency,y_true,y_pred = test_model(model, train_dataloader,test_epochs)
+test_accuracy,y_true,y_pred = test_model(model, train_dataloader, test_epochs)
 y_pred = sorted([i for item in y_pred for i in item])
 y_pred = list(map(int,y_pred))
 y_true = sorted([i for item in y_true for i in item])
@@ -209,12 +209,12 @@ y_true = list(map(int,y_true))
 
 
 # visualization
-train_accurency = go.Scatter(y=accurency, name="accurency")
+train_accuracy = go.Scatter(y=accurency, name="accuracy")
 trace_loss = go.Scatter(y=loss, name="loss")
-fig1 = go.Figure(data=[train_accurency, trace_loss], layout=go.Layout(title='loss/accurency-epoch', xaxis=dict(title='X轴'), yaxis=dict(title='Y轴')))
+fig1 = go.Figure(data=[train_accuracy, trace_loss], layout=go.Layout(title='loss/accuracy-epoch', xaxis=dict(title='X轴'), yaxis=dict(title='Y轴')))
 
-test_accurency = go.Scatter(y=test_accurency, name='test accurency')
-fig2 = go.Figure(data=[test_accurency], layout=go.Layout(title='test accurency', xaxis=dict(title='X轴'), yaxis=dict(title='Y轴')))
+test_accuracy = go.Scatter(y=test_accuracy, name='test accuracy')
+fig2 = go.Figure(data=[test_accuracy], layout=go.Layout(title='test accuracy', xaxis=dict(title='X轴'), yaxis=dict(title='Y轴')))
 
 trace_true = go.Scatter(y=y_true, name='y_true')
 fig3 = go.Figure(data=[trace_true], layout=go.Layout(title='y_true', xaxis=dict(title='X轴'), yaxis=dict(title='Y轴')))
@@ -222,7 +222,7 @@ fig3 = go.Figure(data=[trace_true], layout=go.Layout(title='y_true', xaxis=dict(
 ftrace_pred = go.Scatter(y=y_pred, name='y_pred')
 fig4 = go.Figure(data=[ftrace_pred], layout=go.Layout(title='y_pred', xaxis=dict(title='X轴'), yaxis=dict(title='Y轴')))
 
-fig = make_subplots(rows=2, cols=2, subplot_titles=('loss/accurency~epoch', 'test accurency~epoch', 'y_true', 'y_pred'))
+fig = make_subplots(rows=2, cols=2, subplot_titles=('loss/accuracy~epoch', 'test accuracy~epoch', 'y_true', 'y_pred'))
 fig.add_trace(fig1.data[0], row=1, col=1)
 fig.add_trace(fig1.data[1], row=1, col=1)
 fig.add_trace(fig2.data[0], row=1, col=2)
