@@ -177,8 +177,8 @@ data = Sequence_Dataset(path)
 
 # Split training and test data sets
 train_dataset, test_dataset = torch.utils.data.random_split(data, [1239, 300])
-train_dataloader = DataLoader(train_dataset, batch_size=4, shuffle=True, collate_fn=collote_fn, drop_last=True)
-test_dataloader = DataLoader(test_dataset, batch_size=4, shuffle=True, collate_fn=collote_fn, drop_last=True)
+train_dataloader = DataLoader(train_dataset, batch_size=2, shuffle=True, collate_fn=collote_fn, drop_last=True)
+test_dataloader = DataLoader(test_dataset, batch_size=2, shuffle=True, collate_fn=collote_fn, drop_last=True)
 
 # Initialization model
 config = RobertaConfig.from_pretrained(checkpoint)
@@ -190,10 +190,10 @@ step,(batch_x,batch_y) = next(enumerate(train_dataloader))
 loss_function = nn.CrossEntropyLoss(weight=torch.FloatTensor([1,1,1,1,1]).to(device))
 
 # Adam optimization function is used to define the learning rate
-optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
+optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
 
-train_epochs = 50
-test_epochs = 10
+train_epochs = 10
+test_epochs = 2
 
 # train model
 loss,accurency = train_model(model, train_epochs, train_dataloader)
@@ -207,12 +207,12 @@ y_true = list(map(int,y_true))
 
 
 # visualization
-train_accurency = go.Scatter(y=accurency, name="accurency")
+train_accurency = go.Scatter(y=accurency, name="accuracy")
 trace_loss = go.Scatter(y=loss, name="loss")
-fig1 = go.Figure(data=[train_accurency, trace_loss], layout=go.Layout(title='loss/accurency-epoch', xaxis=dict(title='X轴'), yaxis=dict(title='Y轴')))
+fig1 = go.Figure(data=[train_accurency, trace_loss], layout=go.Layout(title='loss/accuracy-epoch', xaxis=dict(title='X轴'), yaxis=dict(title='Y轴')))
 
-test_accurency = go.Scatter(y=test_accurency, name='test accurency')
-fig2 = go.Figure(data=[test_accurency], layout=go.Layout(title='test accurency', xaxis=dict(title='X轴'), yaxis=dict(title='Y轴')))
+test_accurency = go.Scatter(y=test_accurency, name='test accuracy')
+fig2 = go.Figure(data=[test_accurency], layout=go.Layout(title='test accuracy', xaxis=dict(title='X轴'), yaxis=dict(title='Y轴')))
 
 trace_true = go.Scatter(y=y_true, name='y_true')
 fig3 = go.Figure(data=[trace_true], layout=go.Layout(title='y_true', xaxis=dict(title='X轴'), yaxis=dict(title='Y轴')))
@@ -220,7 +220,7 @@ fig3 = go.Figure(data=[trace_true], layout=go.Layout(title='y_true', xaxis=dict(
 ftrace_pred = go.Scatter(y=y_pred, name='y_pred')
 fig4 = go.Figure(data=[ftrace_pred], layout=go.Layout(title='y_pred', xaxis=dict(title='X轴'), yaxis=dict(title='Y轴')))
 
-fig = make_subplots(rows=2, cols=2, subplot_titles=('loss/accurency~epoch', 'test accurency~epoch', 'y_true', 'y_pred'))
+fig = make_subplots(rows=2, cols=2, subplot_titles=('loss/accuracy~epoch', 'test accuracy~epoch', 'y_true', 'y_pred'))
 fig.add_trace(fig1.data[0], row=1, col=1)
 fig.add_trace(fig1.data[1], row=1, col=1)
 fig.add_trace(fig2.data[0], row=1, col=2)

@@ -38,7 +38,7 @@ class Sequence_Dataset(Dataset):
 #data tokenization
 def collote_fn(batch_samples):
     batch_sentence = []
-    batch_label = torch.zeros(4, 5).long()
+    batch_label = torch.zeros(16, 5).long()  # Batch size
     for id, sample in enumerate(batch_samples):
         batch_sentence.append(sample[1])
         batch_label[id][int(sample[0])] = 1
@@ -185,8 +185,8 @@ data = Sequence_Dataset(path)
 
 # Split training and test data sets
 train_dataset, test_dataset = torch.utils.data.random_split(data, [1239, 300])
-train_dataloader = DataLoader(train_dataset, batch_size=4, shuffle=True, collate_fn=collote_fn, drop_last=True)
-test_dataloader = DataLoader(test_dataset, batch_size=4, shuffle=True, collate_fn=collote_fn, drop_last=True)
+train_dataloader = DataLoader(train_dataset, batch_size=16, shuffle=True, collate_fn=collote_fn, drop_last=True)
+test_dataloader = DataLoader(test_dataset, batch_size=16, shuffle=True, collate_fn=collote_fn, drop_last=True)
 
 # Initialization model
 model = LSTM(512, 1024, 5, 5, 4, bidirectional=False).to(device)
@@ -197,7 +197,7 @@ loss_function = nn.MSELoss()
 # Adam optimization function is used to define the learning rate
 optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
 
-train_epochs = 50
+train_epochs = 100
 test_epochs = 10
 
 # train model
