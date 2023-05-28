@@ -19,9 +19,11 @@ class Sequence_Dataset(Dataset):
 
 
     def load_data(self, annotations_file):
-        df = pd.read_csv(annotations_file,header=None,names=['id', 'text', 'lable', 'multilabel', 'domain'])
+        df = pd.read_csv(annotations_file,header=None)
+        df = df.fillna(0)
         Data = {}
-        for idx, sentense in enumerate(np.array(list(zip(df['multilabel'],df['text'],df['lable'])))):
+
+        for idx, sentense in enumerate(np.array(list(zip(df[3],df[1],df[5])))):
             Data[idx] = sentense
         return Data
 
@@ -220,7 +222,7 @@ device = 'cuda' if torch.cuda.is_available() else 'cpu'
 print(f'Using {device} device')
 
 # Data set path
-path = "..//complain_data.csv"
+path = "..//complaint_severity_data(2).csv"
 
 # Use RoERTa tokenization
 tokenizer = RobertaTokenizer.from_pretrained('roberta-base')
@@ -229,12 +231,12 @@ tokenizer = RobertaTokenizer.from_pretrained('roberta-base')
 data = Sequence_Dataset(path)
 
 # Split training and test data sets
-train_dataset, test_dataset = torch.utils.data.random_split(data, [1239, 300])
+train_dataset, test_dataset = torch.utils.data.random_split(data, [1180, 300])
 train_dataloader = DataLoader(train_dataset, batch_size=4, shuffle=True, collate_fn=collote_fn, drop_last=True)
 test_dataloader = DataLoader(test_dataset, batch_size=4, shuffle=True, collate_fn=collote_fn, drop_last=True)
 
 # Initialization model
-model = LSTM(input_size=512, hidden_size=64, num_layers=5, output_size1=5, output_size2=2, batch_size=4, bidirectional=False).to(device)
+model = LSTM(input_size=512, hidden_size=1024, num_layers=5, output_size1=5, output_size2=2, batch_size=4, bidirectional=False).to(device)
 
 # Use the cross entropy loss function
 loss_function1 = nn.CrossEntropyLoss(weight=torch.FloatTensor([1,1,1,1,1]).to(device))
@@ -243,8 +245,8 @@ loss_function2 = nn.CrossEntropyLoss(weight=torch.FloatTensor([1,1]).to(device))
 # Adam optimization function is used to define the learning rate
 optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
 
-train_epochs = 5
-test_epochs = 1
+train_epochs = 50
+test_epochs = 10
 
 # train model
 loss,accurency1,accurency2 = train_model(model, train_epochs, train_dataloader)

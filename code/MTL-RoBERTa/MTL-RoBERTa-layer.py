@@ -20,9 +20,11 @@ class Sequence_Dataset(Dataset):
 
 
     def load_data(self, annotations_file):
-        df = pd.read_csv(annotations_file,header=None,names=['id', 'text', 'lable', 'multilabel', 'domain'])
+        df = pd.read_csv(annotations_file,header=None)
+        df = df.fillna(0)
         Data = {}
-        for idx, sentense in enumerate(np.array(list(zip(df['multilabel'],df['text'],df['lable'])))):
+
+        for idx, sentense in enumerate(np.array(list(zip(df[3],df[1],df[5])))):
             Data[idx] = sentense
         return Data
 
@@ -40,11 +42,11 @@ class Sequence_Dataset(Dataset):
 def collote_fn(batch_samples):
     batch_sentence = []
     batch_label_multi = torch.zeros(len(batch_samples), 5).long()
-    batch_label_exp = torch.zeros(len(batch_samples), 5).long()
+    batch_label_exp = torch.zeros(len(batch_samples), 2).long()
     for id, sample in enumerate(batch_samples):
         batch_sentence.append(sample[1])
         batch_label_multi[id][int(sample[0])] = 1
-        batch_label_exp[id][int(sample[0])] = 1
+        batch_label_exp[id][int(float(sample[2]))] = 1
     x = tokenizer(
         batch_sentence,
         padding="max_length",
@@ -205,7 +207,7 @@ device = 'cuda' if torch.cuda.is_available() else 'cpu'
 print(f'Using {device} device')
 
 # Data set path
-path = "..//complain_data.csv"
+path = "..//complaint_severity_data(2).csv"
 
 # model choose
 checkpoint = "roberta-base"
@@ -217,7 +219,7 @@ tokenizer = RobertaTokenizer.from_pretrained(checkpoint)
 data = Sequence_Dataset(path)
 
 # Split training and test data sets
-train_dataset, test_dataset = torch.utils.data.random_split(data, [1239, 300])
+train_dataset, test_dataset = torch.utils.data.random_split(data, [1180, 300])
 train_dataloader = DataLoader(train_dataset, batch_size=4, shuffle=True, collate_fn=collote_fn, drop_last=True)
 test_dataloader = DataLoader(test_dataset, batch_size=4, shuffle=True, collate_fn=collote_fn, drop_last=True)
 
